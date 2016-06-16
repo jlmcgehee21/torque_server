@@ -2,12 +2,13 @@ from flask import Flask, render_template, url_for, redirect, request, current_ap
 
 import datetime
 import os
-
+import pandas as pd
+import numpy as np
 
 import models
 from ..extensions import influx_db, auth
 import time
-
+import json
 
 app = current_app
 
@@ -41,6 +42,9 @@ def process_torque_data():
         if key in ['time', 'session']:
             continue
 
+        if val.lstrip('-').replace('.','',1).isdigit():
+            val = float(val)
+
         meas = {"measurement": meas_type,
                 "tags": {},
                 "time": timestamp,
@@ -53,6 +57,88 @@ def process_torque_data():
     influx_db.connection.write_points(points)
 
     return 'OK!'
+
+@api.route('/trips', methods=['GET'])
+@auth.login_required
+def trips():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    details = request.args.get('details')
+    if details is not None:
+        details = json.loads(details)
+
+    session_ids = models.TripFinder(start, end).find()
+
+    if details:
+        return_dict = {}
+        for sesh in session_ids:
+            report = models.Trip(sesh).full_report()
+            return_dict[sesh] = [reading for reading in report]
+
+        return jsonify(return_dict)
+
+    return jsonify(sessions=[item for item in session_ids])
+
+@api.route('/trips/<trip_id>', methods=['GET'])
+@auth.login_required
+def trip_details(trip_id, internal=False):
+    trip = models.Trip(trip_id)
+
+    summarize = request.args.get('summarize')
+    if summarize is not None:
+        summarize = json.loads(summarize)
+
+    details = request.args.get('details')
+    if details is not None:
+        details = json.loads(details)
+
+    if summarize:
+        types = request.args.get('measurement_types')
+        operation = request.args.get('operation', default='mean')
+
+        summary = trip.summarize(types, operation)
+
+        return jsonify(summary)
+
+    if details:
+        readings = trip.full_report()
+
+        return jsonify({trip_id: [reading for reading in readings]})
+
+    else:
+        results = trip.overview()
+
+        return jsonify(results)
+
+
+@api.route('/aggregate', methods=['GET'])
+@auth.login_required
+def aggregate():
+    start = request.args.get('start')
+    end = request.args.get('end')
+    meas_type = request.args.get('measurement_type', 'Trip')
+    operation1 = request.args.get('inner', 'max')
+    operation2 = request.args.get('outer', 'sum')
+
+    operation_opts = {'sum': sum, 'max': max, 'min': min, 'mean': np.mean}
+    # operation1 = operation_opts.get(operation1, sum)
+    operation2 = operation_opts.get(operation2, sum)
+
+    trip_ids = models.TripFinder(start, end).find()
+
+    all_meas = []
+    for trip_id in trip_ids:
+        meas = models.Trip(trip_id).summarize(meas_type, operation1).get(meas_type)
+
+        if meas is not None:
+            all_meas.append(meas[operation1])
+
+    return jsonify({meas_type: operation2(all_meas)})
+
+
+
+
+
 
 
 if __name__ == '__main__':

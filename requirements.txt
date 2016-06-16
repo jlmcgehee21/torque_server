@@ -5,3 +5,5 @@ simplejson
 Flask-InfluxDB
 flask-httpauth
 Flask-Testing
+pandas
+fuzzywuzzy
