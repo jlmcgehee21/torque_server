@@ -114,14 +114,26 @@ def trip_details(trip_id, internal=False):
 @api.route('/aggregate', methods=['GET'])
 @auth.login_required
 def aggregate():
-    start = request.args.get('start')
+
+    days_of_history = request.args.get('n_days')
+    print days_of_history
+
+    if days_of_history is None:
+        start = request.args.get('start')
+
+    else:
+        start = pd.to_datetime(datetime.datetime.utcnow()) - pd.Timedelta(days=int(days_of_history))
+
+        start = start.isoformat()
+
     end = request.args.get('end')
+
     meas_type = request.args.get('measurement_type', 'Trip')
     operation1 = request.args.get('inner', 'max')
     operation2 = request.args.get('outer', 'sum')
 
     operation_opts = {'sum': sum, 'max': max, 'min': min, 'mean': np.mean}
-    # operation1 = operation_opts.get(operation1, sum)
+
     operation2 = operation_opts.get(operation2, sum)
 
     trip_ids = models.TripFinder(start, end).find()
@@ -133,11 +145,7 @@ def aggregate():
         if meas is not None:
             all_meas.append(meas[operation1])
 
-    return jsonify({meas_type: operation2(all_meas)})
-
-
-
-
+    return jsonify({meas_type.replace(' ', ''): np.round(operation2(all_meas), 2)})
 
 
 

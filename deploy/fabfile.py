@@ -52,6 +52,8 @@ def check_service_logs():
         for service in service_names:
             sudo('tail -n 100 /var/log/upstart/%s.log'%(service))
 
+        sudo('tail -n 100 /var/www/torque_server/app/logs/uwsgi.log')
+
 
 def clear_service_logs():
     with settings(warn_only=True):

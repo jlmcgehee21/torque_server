@@ -5,5 +5,5 @@ simplejson
 Flask-InfluxDB
 flask-httpauth
 Flask-Testing
-pandas
+pandas==0.18.0
 fuzzywuzzy
