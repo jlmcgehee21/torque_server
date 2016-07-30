@@ -9,7 +9,7 @@ class TripFinder(object):
         self.end = end
 
     def find(self):
-        session_query_str = 'select distinct(session) from session_start '
+        session_query_str = 'select distinc(session) from session_start '
 
         where_clause = 'where '
         if self.start is not None:

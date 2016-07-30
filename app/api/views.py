@@ -127,6 +127,8 @@ def aggregate():
         start = start.isoformat()
 
     end = request.args.get('end')
+    
+    print start, end
 
     meas_type = request.args.get('measurement_type', 'Trip')
     operation1 = request.args.get('inner', 'max')
@@ -145,8 +147,13 @@ def aggregate():
         if meas is not None:
             all_meas.append(meas[operation1])
 
-    return jsonify({meas_type.replace(' ', ''): np.round(operation2(all_meas), 2)})
+    if len(all_meas) > 0:
+        response = jsonify({meas_type.replace(' ', ''):
+                            np.round(operation2(all_meas), 2)})
+    else:
+        response = jsonify({meas_type.replace(' ', ''): None})
 
+    return response 
 
 
 if __name__ == '__main__':
